@@ -8,10 +8,15 @@ pi=pigpio.pi()
 
 debug = True
 
+messagesent = False
+messagesent2 = False
+messagesent3 = False
+messagesent4 = False
+messagesent5 = False
 
 #Setting up the pins on the right of the breakout board for OUTPUT: LEDs
 for i in [14, 15, 23, 24, 25, 8, 7]:
-     pi.set.mode(i, pigpio.OUTPUT)
+     pi.set_mode(i, pigpio.OUTPUT)
 
 #Setting up the pins on the left of the breakout board for INPUT: hall effect sensors
 sensor_pins = [2, 3, 4, 17, 27, 22, 10]
@@ -44,10 +49,8 @@ def timenow():
 def sendemail(from_addr = 'pillbox.rasppi@gmail.com', 
                 to_addr_list = ['elizabeth@yallop.org'],
                 cc_addr_list = ['elizabeth@yallop.org'], 
-                subject,
-                message,
                 login = 'pillbox.rasppi@gmail.com', 
-                password = 'eyrasppi'
+                password = 'eyrasppi',
                 smtpserver = 'smtp.gmail.com:587'):
     header  = 'From: %s\n' % from_addr
     header += 'To: %s\n' % ','.join(to_addr_list)
@@ -73,9 +76,10 @@ def flashLED(LED_pin, bleep = False):
 #defines the sensor-checking function
 def checkbox(box):
 
-        if pi.read(box['sensor_pin']) == 0:
+        if pi.read(box['sensor_pin']) == 0 and messagesent != True:
             sendemail( subject      = 'Test email', 
                 message      = 'At' + time.strftime('%H%M') + ', ' + box['boxname'] + 's box was opened.')
+            messagesent = True
         while pi.read(box['sensor_pin']) == 0:
             flashLED(box['LED_pin']) 
 
@@ -104,48 +108,31 @@ while True:
     while timenow() >= alarm and timenow() < ('0840'):
         flashLED(box['LED_pin'])
         for box in boxes:
-            if (day_num != today) and pi.read(box['sensor_pin']) == 0:
-                sendemail(from_addr    = 'pillbox.rasppi@gmail.com', 
-                    to_addr_list = ['elizabeth@yallop.org'],
-                    cc_addr_list = ['elizabeth@yallop.org'], 
-                    subject      = 'Alert!', 
-                    message      = 'The wrong box was opened at med time! Maybe check up on the user?',
-                    login        = 'pillbox.rasppi@gmail.com', 
-                    password     = 'eyrasppi')
-            elif (day_num == today) and pi.read(box['sensor_pin']) == 0:
-                sendemail(from_addr    = 'pillbox.rasppi@gmail.com', 
-                    to_addr_list = ['elizabeth@yallop.org'],
-                    cc_addr_list = ['elizabeth@yallop.org'], 
-                    subject      = 'Check-in', 
-                    message      = 'The correct box was opened at the correct time today.',
-                    login        = 'pillbox.rasppi@gmail.com', 
-                    password     = 'eyrasppi')
+            if (day_num != today) and pi.read(box['sensor_pin']) == 0 and messagesent2 != True:
+                sendemail(subject      = 'Alert!', 
+                    message      = 'The wrong box was opened at med time! Maybe check up on the user?')
+                messagesent2 = True
+            elif (day_num == today) and pi.read(box['sensor_pin']) == 0 and messagesent3 != True:
+                sendemail(subject      = 'Check-in', 
+                    message      = 'The correct box was opened at the correct time today.')
+                messagesent3 = True
                 pilltaken = True
 
     #alerts the carer if the pills weren't taken
-    if timenow() == ('0840') and (pilltaken != True):
-        sendemail(from_addr    = 'pillbox.rasppi@gmail.com', 
-                    to_addr_list = ['elizabeth@yallop.org'],
-                    cc_addr_list = ['elizabeth@yallop.org'], 
-                    subject      = 'Alert!', 
-                    message      = 'The pills werent taken at med time today. Maybe check up on the user?',
-                    login        = 'pillbox.rasppi@gmail.com', 
-                    password     = 'eyrasppi')
+    if timenow() == ('0840') and (pilltaken != True) and messagesent4 != True:
+        sendemail(subject      = 'Alert!', 
+                    message      = 'The pills werent taken at med time today. Maybe check up on the user?')
+        messagesent4 = True
 
 
     #checks that the pills aren't taken after med time
     while timenow() > ('0840'):
         for box in boxes:
             checkbox(box)
-            if pi.read(box['sensor_pin']) == 0:
-                sendemail(from_addr    = 'pillbox.rasppi@gmail.com', 
-                    to_addr_list = ['elizabeth@yallop.org'],
-                    cc_addr_list = ['elizabeth@yallop.org'], 
-                    subject      = 'Alert!', 
-                    message      = 'Its more than 10 minutes past med time, but ' + box['boxname'] + 's box was opened.',
-                    login        = 'pillbox.rasppi@gmail.com', 
-                    password     = 'eyrasppi')
-
+            if pi.read(box['sensor_pin']) == 0 and messagesent5 != True:
+                sendemail(subject      = 'Alert!', 
+                    message      = 'Its more than 10 minutes past med time, but ' + box['boxname'] + 's box was opened.')
+                messagesent5 = True
     if timenow() == ('0845') and logged != True:
         timelog += 1
         logged = True
