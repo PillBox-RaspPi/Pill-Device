@@ -8,11 +8,9 @@ pi=pigpio.pi()
 
 debug = True
 
-messagesent = False
-messagesent2 = False
-messagesent3 = False
-messagesent4 = False
-messagesent5 = False
+#sets the alarm time
+ALARM =  '0830'
+ALARMEND = '0840'
 
 #Setting up the pins on the right of the breakout board for OUTPUT: LEDs
 for i in [14, 15, 23, 24, 25, 8, 7]:
@@ -21,7 +19,6 @@ for i in [14, 15, 23, 24, 25, 8, 7]:
 #Setting up the pins on the left of the breakout board for INPUT: hall effect sensors
 sensor_pins = [2, 3, 4, 17, 27, 22, 10]
 for i in sensor_pins:
-
     pi.set_mode(i,pigpio.INPUT)
     pi.set_pull_up_down(i, pigpio.PUD_UP)
 
@@ -39,14 +36,23 @@ boxes = [Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday]
 
 
 
-
 #returns the current time
 def timenow():
     return time.strftime('%H%M')
 
+sentmails = {sentmail1, sentmail3, sentmail4}
+
+timestamp = datetime.date.today()
+
+if resetday != today:
+    for i in sentmails:
+         i = False
+    sentmail2 = [False]*7
+    sentmail5 = [False]*7
+    timestamp = datetime.date.today()
 
 #defines the email function
-def sendemail(from_addr = 'pillbox.rasppi@gmail.com', 
+def sendemail(from_addr = 'pillbox.rasppi@gmail.com',
                 to_addr_list = ['elizabeth@yallop.org'],
                 cc_addr_list = ['elizabeth@yallop.org'], 
                 login = 'pillbox.rasppi@gmail.com', 
@@ -76,15 +82,13 @@ def flashLED(LED_pin, bleep = False):
 #defines the sensor-checking function
 def checkbox(box):
 
-        if pi.read(box['sensor_pin']) == 0 and messagesent != True:
-            sendemail( subject      = 'Test email', 
+        if pi.read(box['sensor_pin']) == 0 and sentmail1 != True:
+            sendemail( subject      = 'Test email',
                 message      = 'At' + time.strftime('%H%M') + ', ' + box['boxname'] + 's box was opened.')
-            messagesent = True
+            sentmail1 = True
         while pi.read(box['sensor_pin']) == 0:
-            flashLED(box['LED_pin']) 
+            flashLED(box['LED_pin'])
 
-#sets the alarm time
-alarm =  '0830'
 
 print('Setup Complete!')
 
@@ -97,42 +101,43 @@ while True:
 
     #Checks that no pills are taken before med time
     if debug:
-        print('timenow = ', timenow(), ' alarm = ', alarm)
-    while timenow() < alarm:
-        print('time before alarm')
+        print('timenow = ', timenow(), ' ALARM = ', ALARM)
+    while timenow() < ALARM:
+        print('time before ALARM')
         for box in boxes:
             checkbox(box)
 
 
-    #At alarm time, flashes correct light, checks which box is opened and texts carer correctly
-    while timenow() >= alarm and timenow() < ('0840'):
+    #At ALARM time, flashes correct light, checks which box is opened and texts carer correctly
+    while timenow() >= ALARM and timenow() < ALARMEND:
         flashLED(box['LED_pin'])
         for box in boxes:
-            if (day_num != today) and pi.read(box['sensor_pin']) == 0 and messagesent2 != True:
-                sendemail(subject      = 'Alert!', 
+            if (day_num != today) and pi.read(box['sensor_pin']) == 0 and not sentmail2[day_num]:
+                sendemail(subject      = 'Alert!',
                     message      = 'The wrong box was opened at med time! Maybe check up on the user?')
-                messagesent2 = True
-            elif (day_num == today) and pi.read(box['sensor_pin']) == 0 and messagesent3 != True:
-                sendemail(subject      = 'Check-in', 
-                    message      = 'The correct box was opened at the correct time today.')
-                messagesent3 = True
+                    sentmail2[day_num] = True
+            elif (day_num == today) and pi.read(box['sensor_pin']) == 0 and not sentmail3:
+                sendemail(subject      = 'Check-in',
+                    message      = 'The correct box was opened at the correct time today.',)
+                    sentmail3 = True
                 pilltaken = True
 
     #alerts the carer if the pills weren't taken
-    if timenow() == ('0840') and (pilltaken != True) and messagesent4 != True:
-        sendemail(subject      = 'Alert!', 
+    if timenow() == ALARMEND and (pilltaken != True) and sentmail4 != True:
+        sendemail(subject      = 'Alert!',
                     message      = 'The pills werent taken at med time today. Maybe check up on the user?')
-        messagesent4 = True
+        sentmail4 = True
 
 
     #checks that the pills aren't taken after med time
-    while timenow() > ('0840'):
+    while timenow() > ALARMEND:
         for box in boxes:
             checkbox(box)
-            if pi.read(box['sensor_pin']) == 0 and messagesent5 != True:
-                sendemail(subject      = 'Alert!', 
+            if pi.read(box['sensor_pin']) == 0 and sentmail5[day_num] != True:
+                sendemail(subject      = 'Alert!',
                     message      = 'Its more than 10 minutes past med time, but ' + box['boxname'] + 's box was opened.')
-                messagesent5 = True
+                sentmail5[day_num] = True
+
     if timenow() == ('0845') and logged != True:
         timelog += 1
         logged = True
